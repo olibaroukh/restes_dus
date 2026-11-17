@@ -73,7 +73,7 @@
   if (typeof module !== 'undefined') { module.exports = { lireExtraction }; return; }
 
   // ---------- Appli ----------
-  const VERSION_CODE = '2026.11.18-1';   // à incrémenter avec version.json à chaque modification
+  const VERSION_CODE = '2026.11.18-2';   // à incrémenter avec version.json à chaque modification
   const API = 'https://suivi-stats-api.oli-baroukh.workers.dev';
   const CLE_SESSION = 'suiviStatsSession';
   const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -381,9 +381,23 @@
     sel.innerHTML = '<option value="">— Choisir le groupe —</option>' + groupes().map(g => `<option value="${esc(g)}">${esc(g)} (${magsGroupe(g).length} magasin${magsGroupe(g).length > 1 ? 's' : ''})</option>`).join('');
     sel.value = v;
   }
+  function remplirMagasins() {
+    const sel = $('#cp-magasin'), v = sel.value;
+    sel.innerHTML = '<option value="">— Choisir le magasin —</option>' + S.magasins.slice().sort((a, b) => (a.magasin || '').localeCompare(b.magasin || ''))
+      .map(m => `<option value="${esc(m.code)}">${esc(m.magasin || m.code)} · ${esc(m.code)}</option>`).join('');
+    sel.value = v;
+  }
   function rendreChoixMagasins() {
     const g = $('#cp-groupe').value, role = $('#cp-role').value;
-    $('#cp-q').hidden = role !== 'magasin';
+    $('#cp-q').hidden = true;
+    $('#cp-bloc-groupe').hidden = role === 'magasin'; $('#cp-bloc-magasin').hidden = role !== 'magasin';
+    if (role === 'magasin') {
+      // Un compte magasin = un magasin franchisé actif, choisi par son nom et son code site
+      const m = S.magasins.find(x => x.code === $('#cp-magasin').value);
+      $('#cp-lib-mag').textContent = 'Magasin de ce compte';
+      $('#cp-magasins').innerHTML = m ? `<div class="petit">✓ ${esc(m.magasin)} <span class="muted">${esc(m.code)} · ${esc(m.groupe)}</span></div>` : '<p class="muted petit">Choisissez le magasin.</p>';
+      return;
+    }
     if (role === 'franchise') {
       $('#cp-lib-mag').textContent = 'Magasins du groupe (automatique, d’après le référentiel)';
       $('#cp-magasins').innerHTML = !g ? '<p class="muted petit">Choisissez le groupe : ses magasins s’afficheront ici.</p>'
@@ -397,7 +411,7 @@
     $$('#cp-magasins input').forEach(c => c.onchange = () => { c.checked ? choixCodes.add(c.value) : choixCodes.delete(c.value); });
   }
   function rendreComptes() {
-    remplirGroupes(); rendreChoixMagasins();
+    remplirGroupes(); remplirMagasins(); rendreChoixMagasins();
     const nomMag = c => (S.magasins.find(m => m.code === c) || {}).magasin || c;
     const magsCompte = c => [...new Set([...(c.groupe ? c.magasinsGroupe || [] : []), ...c.codes])];
     $('#cp-table').innerHTML = '<thead><tr><th>Groupe</th><th>Adresse</th><th>Nom</th><th>Type</th><th>Magasins</th><th>Actif</th><th></th></tr></thead><tbody>' +
@@ -410,20 +424,23 @@
       $('#cp-email').value = c.email; $('#cp-nom').value = c.nom || ''; $('#cp-role').value = c.role === 'magasin' ? 'magasin' : 'franchise';
       // groupe : celui du compte, sinon celui de ses magasins (anciens comptes ou comptes magasin)
       $('#cp-groupe').value = c.groupe || ((S.magasins.find(m => m.code === c.codes[0]) || {}).groupe || '');
+      $('#cp-magasin').value = c.role === 'magasin' ? (c.codes[0] || '') : '';
       choixCodes = new Set(c.role === 'magasin' ? c.codes : []); $('#cp-q').value = ''; rendreChoixMagasins();
       $('#cp-info').textContent = 'Modification de ' + c.email; window.scrollTo(0, 0);
     });
     $$('.cp-act').forEach(b => b.onclick = async () => { const c = S.comptes.find(x => x.email === b.dataset.e); try { await appel('/restes-dus/comptes', { method: 'PUT', body: JSON.stringify({ ...c, actif: !c.actif }) }); chargerComptes(); } catch (e) { $('#cp-info').textContent = e.message; } });
     $$('.cp-sup').forEach(b => b.onclick = async () => { if (!confirm('Supprimer le compte ' + b.dataset.e + ' ? Les justifications déjà saisies sont conservées.')) return; try { await appel('/restes-dus/comptes/supprimer', { method: 'POST', body: JSON.stringify({ email: b.dataset.e }) }); chargerComptes(); } catch (e) { $('#cp-info').textContent = e.message; } });
   }
-  function viderCompte() { emailEdite = null; $('#cp-role').value = 'franchise'; $('#cp-groupe').value = ''; $('#cp-email').value = ''; $('#cp-nom').value = ''; $('#cp-q').value = ''; choixCodes = new Set(); $('#cp-info').textContent = ''; rendreChoixMagasins(); }
+  function viderCompte() { emailEdite = null; $('#cp-role').value = 'franchise'; $('#cp-groupe').value = ''; $('#cp-magasin').value = ''; $('#cp-email').value = ''; $('#cp-nom').value = ''; $('#cp-q').value = ''; choixCodes = new Set(); $('#cp-info').textContent = ''; rendreChoixMagasins(); }
   async function enregistrerCompte() {
     const email = $('#cp-email').value.trim().toLowerCase(), role = $('#cp-role').value, groupe = $('#cp-groupe').value;
     try {
       if (role === 'franchise' && !groupe) throw new Error('Choisissez le groupe du franchisé.');
+      const mag = $('#cp-magasin').value;
+      if (role === 'magasin' && !mag) throw new Error('Choisissez le magasin.');
       if (emailEdite && emailEdite !== email) await appel('/restes-dus/comptes/supprimer', { method: 'POST', body: JSON.stringify({ email: emailEdite }) });
       const ex = (S.comptes || []).find(x => x.email === email);
-      await appel('/restes-dus/comptes', { method: 'PUT', body: JSON.stringify({ email, nom: $('#cp-nom').value.trim(), role, groupe: role === 'franchise' ? groupe : '', codes: role === 'magasin' ? [...choixCodes] : [], actif: ex ? ex.actif : true }) });
+      await appel('/restes-dus/comptes', { method: 'PUT', body: JSON.stringify({ email, nom: $('#cp-nom').value.trim(), role, groupe: role === 'franchise' ? groupe : '', codes: role === 'magasin' ? [mag] : [], actif: ex ? ex.actif : true }) });
       viderCompte(); $('#cp-info').textContent = 'Compte enregistré : ' + email; chargerComptes();
     } catch (e) { $('#cp-info').textContent = e.message; }
   }
@@ -454,7 +471,9 @@
   zone.ondragover = e => { e.preventDefault(); zone.classList.add('survol'); };
   zone.ondragleave = () => zone.classList.remove('survol');
   zone.ondrop = e => { e.preventDefault(); zone.classList.remove('survol'); deposer(e.dataTransfer.files[0]); };
-  $('#cp-q').oninput = rendreChoixMagasins; $('#cp-groupe').onchange = rendreChoixMagasins; $('#cp-role').onchange = rendreChoixMagasins; $('#cp-enregistrer').onclick = enregistrerCompte; $('#cp-vider').onclick = viderCompte;
+  $('#cp-q').oninput = rendreChoixMagasins; $('#cp-groupe').onchange = rendreChoixMagasins;
+  // Choix du magasin : adresse e-mail du référentiel proposée si le champ est vide
+  $('#cp-magasin').onchange = () => { const m = S.magasins.find(x => x.code === $('#cp-magasin').value); if (m && m.email && !$('#cp-email').value.trim()) $('#cp-email').value = m.email; rendreChoixMagasins(); }; $('#cp-role').onchange = rendreChoixMagasins; $('#cp-enregistrer').onclick = enregistrerCompte; $('#cp-vider').onclick = viderCompte;
   // Mise à jour : le service worker relit les fichiers sur le réseau, puis la page est rechargée
   $('#btn-maj').onclick = async () => {
     $('#btn-maj').disabled = true; $('#btn-maj').textContent = 'Mise à jour…';
