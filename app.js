@@ -73,6 +73,7 @@
   if (typeof module !== 'undefined') { module.exports = { lireExtraction }; return; }
 
   // ---------- Appli ----------
+  const VERSION_CODE = '2026.11.17-2';   // à incrémenter avec version.json à chaque modification
   const API = 'https://suivi-stats-api.oli-baroukh.workers.dev';
   const CLE_SESSION = 'suiviStatsSession';
   const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -310,7 +311,11 @@
   async function verifierVersion() {
     try {
       const v = (await (await fetch('version.json?t=' + Date.now(), { cache: 'no-store' })).json()).version;
-      if (!version) { version = v; $('#version').textContent = 'version ' + v; } else if (v !== version) $('#bandeau-maj').hidden = false;
+      if (!version) {
+        version = v; $('#version').textContent = 'version ' + v;
+        // Page servie par une ancienne copie (fichier app.js plus ancien que version.json) : bandeau tout de suite
+        if (VERSION_CODE && VERSION_CODE !== v) $('#bandeau-maj').hidden = false;
+      } else if (v !== version) $('#bandeau-maj').hidden = false;
     } catch (e) {}
   }
 
@@ -328,7 +333,13 @@
   zone.ondragleave = () => zone.classList.remove('survol');
   zone.ondrop = e => { e.preventDefault(); zone.classList.remove('survol'); deposer(e.dataTransfer.files[0]); };
   $('#cp-q').oninput = rendreChoixMagasins; $('#cp-enregistrer').onclick = enregistrerCompte; $('#cp-vider').onclick = viderCompte;
-  $('#btn-maj').onclick = () => location.reload();
+  // Mise à jour : le service worker relit les fichiers sur le réseau, puis la page est rechargée
+  $('#btn-maj').onclick = async () => {
+    $('#btn-maj').disabled = true; $('#btn-maj').textContent = 'Mise à jour…';
+    try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) {}
+    location.reload();
+  };
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(e => console.warn('service worker', e));
   verifierVersion(); setInterval(verifierVersion, 180000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) verifierVersion(); });
   if (session && session.expire > Date.now()) demarrer(); else afficherConnexion();
