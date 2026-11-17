@@ -87,3 +87,13 @@ b.attention,.attention{color:var(--warn)}
 .grille-recap .bloc{border:1px solid var(--line);border-radius:12px;padding:10px 12px;max-height:520px;overflow:auto}
 .tableau tfoot td{font-weight:800;border-top:2px solid var(--line)}
 @media (max-width:760px){.grille-recap{grid-template-columns:1fr}.decision{grid-column:1}}
+
+.recherche-mag{position:relative;flex:1;min-width:260px;max-width:520px}
+.sugg{position:absolute;z-index:20;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.12);max-height:380px;overflow:auto;padding:4px}
+.sugg .it{padding:7px 10px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.sugg .it.actif,.sugg .it:hover{background:var(--soft)}
+.sugg .it b{font-weight:700}
+.sugg .it small{color:var(--muted);font-size:11px;white-space:nowrap}
+.sugg .groupe{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--accent);font-weight:800;padding:8px 10px 2px}
+.sugg .vide{padding:10px;color:var(--muted);font-size:12px}
+.sugg mark{background:none;color:var(--accent);font-weight:800}

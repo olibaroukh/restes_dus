@@ -50,6 +50,10 @@ window.RD_VERSION.then(function (v) {
       <div class="ligne-titre">
         <h2 id="mg-titre">Restes dus</h2>
         <select id="mg-choix" hidden></select>
+        <div class="recherche-mag" id="mg-recherche" hidden>
+          <input id="mg-rq" type="search" name="rd-recherche-magasin" placeholder="🔍 Magasin, code site ou franchisé…" autocomplete="off" spellcheck="false" aria-autocomplete="list">
+          <div id="mg-sugg" class="sugg" role="listbox" hidden></div>
+        </div>
       </div>
       <div id="depot" class="depot" tabindex="0">
         <strong>Déposez ici votre extraction Cosium « Liste des règlements »</strong> (fichier .csv)<br>

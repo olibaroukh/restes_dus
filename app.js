@@ -73,7 +73,7 @@
   if (typeof module !== 'undefined') { module.exports = { lireExtraction }; return; }
 
   // ---------- Appli ----------
-  const VERSION_CODE = '2026.11.18-3';   // à incrémenter avec version.json à chaque modification
+  const VERSION_CODE = '2026.11.18-4';   // à incrémenter avec version.json à chaque modification
   const API = 'https://suivi-stats-api.oli-baroukh.workers.dev';
   const CLE_SESSION = 'suiviStatsSession';
   const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -136,7 +136,11 @@
     $('#sv-titre').textContent = S.moi.admin ? 'Suivi des franchisés' : 'Suivi de mes magasins';
     const sel = $('#mg-choix');
     sel.innerHTML = (S.moi.admin ? '<option value="">— Choisir un magasin —</option>' : '') + S.magasins.map(m => `<option value="${esc(m.code)}">${esc(m.magasin || m.code)} (${esc(m.code)})${S.moi.admin ? ' · ' + esc(m.groupe) : ''}</option>`).join('');
-    sel.hidden = S.magasins.length < 2 && !S.moi.admin;
+    // Liste courte (franchisé) : menu déroulant ; liste longue (administrateur) : recherche
+    S.recherche = S.magasins.length > 15;
+    sel.hidden = S.recherche || (S.magasins.length < 2 && !S.moi.admin);
+    $('#mg-recherche').hidden = !S.recherche;
+    $('#depot').hidden = !S.code;   // pas de dépôt tant qu'aucun magasin n'est choisi
     if (!S.magasins.length) { $('#mg-dossiers').innerHTML = '<p class="muted">Aucun magasin n’est rattaché à votre compte. Contactez Olivier Baroukh.</p>'; $('#depot').hidden = true; }
     if (S.magasins.length && !S.moi.admin) choisirMagasin(S.magasins[0].code);
     if (franchise()) vue('suivi');
@@ -154,6 +158,7 @@
   async function choisirMagasin(code) {
     S.code = code || null; $('#mg-choix').value = code || '';
     const m = S.magasins.find(x => x.code === code);
+    if (S.recherche) { $('#mg-rq').value = m ? `${m.magasin || m.code} (${m.code})` : ''; fermerSugg(); }
     $('#mg-titre').textContent = m ? `Restes dus – ${m.magasin || m.code}` : 'Restes dus';
     $('#depot').hidden = !code; $('#depot-info').textContent = '';
     if (!code) { $('#mg-resume').innerHTML = ''; $('#mg-dossiers').innerHTML = ''; $('#mg-filtres').hidden = true; return; }
@@ -286,6 +291,52 @@
       info.textContent = `Extraction du ${dateFr(ex.dateEdition)} enregistrée : ${p.nbLignes} lignes lues, ${p.nbRetenues} à justifier (${r.dossiers} dossiers) · ${p.recents} de moins de ${JOURS_MIN} jours et ${p.anciens} de plus d’un an non demandées`
         + (r.regles ? ` · ${r.regles} dossier(s) justifié(s) précédemment ne figurent plus dans l’extraction (réglés).` : '.');
     } catch (e) { info.className = 'petit ko'; info.textContent = e.message; }
+  }
+
+  // ---------- Recherche de magasin (liste longue) ----------
+  // Tous les mots tapés doivent se retrouver dans « nom code franchisé » (accents et majuscules ignorés).
+  let suggIdx = 0, suggListe = [];
+  const depotDe = code => (S.suivi || []).find(x => x.code === code);
+  function fermerSugg() { $('#mg-sugg').hidden = true; }
+  function surligner(txt, mots) {
+    let h = esc(txt);
+    for (const m of mots) if (m) { const i = norm(txt).indexOf(m); if (i >= 0 && norm(txt).length === txt.length) h = esc(txt.slice(0, i)) + '<mark>' + esc(txt.slice(i, i + m.length)) + '</mark>' + esc(txt.slice(i + m.length)); }
+    return h;
+  }
+  function ouvrirSugg(vide) {
+    const q = vide === true ? '' : norm($('#mg-rq').value), mots = q.split(/\s+/).filter(Boolean);
+    const texte = m => norm(`${m.magasin} ${m.code} ${m.groupe}`);
+    let liste;
+    if (!mots.length) {
+      // Sans saisie : les magasins qui ont déjà déposé une extraction, les plus récents d'abord
+      liste = S.magasins.filter(m => depotDe(m.code)).sort((a, b) => String(depotDe(b.code).le).localeCompare(String(depotDe(a.code).le))).slice(0, 15);
+      suggListe = liste;
+      $('#mg-sugg').innerHTML = liste.length ? '<div class="groupe">Derniers dépôts</div>' + liste.map(itemSugg([])).join('') : '<div class="vide">Tapez un nom de magasin, un code site ou un franchisé.</div>';
+    } else {
+      liste = S.magasins.filter(m => mots.every(w => texte(m).includes(w)));
+      // Code site exact ou nom qui commence par la saisie en premier
+      const rang = m => (m.code === q ? 0 : norm(m.magasin).startsWith(mots[0]) ? 1 : 2);
+      liste.sort((a, b) => rang(a) - rang(b) || (a.magasin || '').localeCompare(b.magasin || ''));
+      suggListe = liste.slice(0, 40);
+      $('#mg-sugg').innerHTML = suggListe.length ? suggListe.map(itemSugg(mots)).join('') + (liste.length > 40 ? `<div class="vide">${liste.length - 40} autres : précisez la recherche.</div>` : '')
+        : '<div class="vide">Aucun magasin franchisé actif ne correspond.</div>';
+    }
+    suggIdx = 0; marquerSugg();
+    $('#mg-sugg').hidden = false;
+    $$('#mg-sugg .it').forEach((el, i) => { el.onmousedown = e => { e.preventDefault(); choisirMagasin(suggListe[i].code); $('#mg-rq').blur(); }; });
+  }
+  const itemSugg = mots => m => {
+    const d = depotDe(m.code);
+    return `<div class="it" role="option"><span><b>${surligner(m.magasin || m.code, mots)}</b> <span class="muted">${surligner(m.code, mots)}</span><br><small>${surligner(m.groupe || '', mots)}</small></span>
+      <small>${d ? 'extraction du ' + dateFr(d.dateEdition) : ''}</small></div>`;
+  };
+  function marquerSugg() { $$('#mg-sugg .it').forEach((el, i) => el.classList.toggle('actif', i === suggIdx)); const a = $$('#mg-sugg .it')[suggIdx]; if (a) a.scrollIntoView({ block: 'nearest' }); }
+  function toucheSugg(e) {
+    const n = suggListe.length;
+    if (e.key === 'ArrowDown') { e.preventDefault(); if ($('#mg-sugg').hidden) ouvrirSugg(); else { suggIdx = Math.min(n - 1, suggIdx + 1); marquerSugg(); } }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); suggIdx = Math.max(0, suggIdx - 1); marquerSugg(); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (n && !$('#mg-sugg').hidden) { choisirMagasin(suggListe[suggIdx].code); $('#mg-rq').blur(); } }
+    else if (e.key === 'Escape') { fermerSugg(); $('#mg-rq').blur(); }
   }
 
   // ---------- Suivi (administrateurs) ----------
@@ -464,6 +515,9 @@
   $('#lien-deconnexion').onclick = e => { e.preventDefault(); localStorage.removeItem(CLE_SESSION); session = null; location.reload(); };
   $$('#onglets button').forEach(b => b.onclick = () => vue(b.dataset.vue));
   $('#mg-choix').onchange = () => choisirMagasin($('#mg-choix').value);
+  $('#mg-rq').oninput = () => ouvrirSugg(); $('#mg-rq').onkeydown = toucheSugg;
+  $('#mg-rq').onfocus = () => { $('#mg-rq').select(); ouvrirSugg(true); };
+  $('#mg-rq').onblur = () => setTimeout(() => { fermerSugg(); const m = S.magasins.find(x => x.code === S.code); $('#mg-rq').value = m ? `${m.magasin || m.code} (${m.code})` : ''; }, 150);
   $('#mg-statut').onchange = rendreMagasin; $('#rc-magasin').onchange = rendreRecap; $('#mg-q').oninput = rendreMagasin;
   const zone = $('#depot'), fic = $('#fichier');
   zone.onclick = () => fic.click(); zone.onkeydown = e => { if (e.key === 'Enter') fic.click(); };
