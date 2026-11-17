@@ -8,7 +8,15 @@
 <link rel="icon" type="image/png" href="/suivi-stats/assets/icone-192.png">
 <link rel="apple-touch-icon" href="/suivi-stats/assets/apple-touch-icon.png">
 <title>Restes dus – franchisés</title>
-<link rel="stylesheet" href="app.css">
+<!-- Les fichiers de l'appli sont chargés avec ?v=<version> : une nouvelle version ne peut pas être masquée
+     par le cache de GitHub Pages (10 min). Hors ligne : copie gardée par le service worker. -->
+<script>
+window.RD_VERSION = fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
+  .then(function (r) { return r.json(); }).then(function (d) { return d.version; }).catch(function () { return ''; });
+window.RD_VERSION.then(function (v) {
+  var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'app.css' + (v ? '?v=' + encodeURIComponent(v) : ''); document.head.appendChild(l);
+});
+</script>
 </head>
 <body>
 <header class="entete">
@@ -106,6 +114,10 @@
   </section>
 </main>
 <footer class="pied muted petit">Restes dus franchisés · <span id="version"></span></footer>
-<script src="app.js"></script>
+<script>
+window.RD_VERSION.then(function (v) {
+  var s = document.createElement('script'); s.src = 'app.js' + (v ? '?v=' + encodeURIComponent(v) : ''); document.body.appendChild(s);
+});
+</script>
 </body>
 </html>

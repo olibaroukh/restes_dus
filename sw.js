@@ -2,7 +2,7 @@
  * Fichiers de l'appli : réseau d'abord (revalidé à chaque ouverture, sans attendre le cache GitHub de 10 min),
  * copie locale en secours. Les données passent par l'API (autre adresse) : jamais mises en cache ici.
  * Changer CACHE n'est pas nécessaire à chaque version : version.json + bandeau « Mettre à jour » suffisent. */
-const CACHE = 'restes-dus-v1';
+const CACHE = 'restes-dus-v2';
 const FICHIERS = ['./', './index.html', './app.js', './app.css'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FICHIERS)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('restes-dus-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

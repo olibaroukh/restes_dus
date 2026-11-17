@@ -73,7 +73,7 @@
   if (typeof module !== 'undefined') { module.exports = { lireExtraction }; return; }
 
   // ---------- Appli ----------
-  const VERSION_CODE = '2026.11.18-2';   // à incrémenter avec version.json à chaque modification
+  const VERSION_CODE = '2026.11.18-3';   // à incrémenter avec version.json à chaque modification
   const API = 'https://suivi-stats-api.oli-baroukh.workers.dev';
   const CLE_SESSION = 'suiviStatsSession';
   const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -453,7 +453,7 @@
       if (!version) {
         version = v; $('#version').textContent = 'version ' + v;
         // Page servie par une ancienne copie (fichier app.js plus ancien que version.json) : bandeau tout de suite
-        if (VERSION_CODE && VERSION_CODE !== v) $('#bandeau-maj').hidden = false;
+        if (VERSION_CODE && VERSION_CODE !== v && !sessionStorage.getItem('rdMaj:' + v)) $('#bandeau-maj').hidden = false;
       } else if (v !== version) $('#bandeau-maj').hidden = false;
     } catch (e) {}
   }
@@ -478,6 +478,8 @@
   $('#btn-maj').onclick = async () => {
     $('#btn-maj').disabled = true; $('#btn-maj').textContent = 'Mise à jour…';
     try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) {}
+    // Garde-fou : une seule relance automatique par version (pas de boucle si la publication GitHub n'est pas finie)
+    try { const v = (await (await fetch('version.json?t=' + Date.now(), { cache: 'no-store' })).json()).version; sessionStorage.setItem('rdMaj:' + v, '1'); } catch (e) {}
     location.reload();
   };
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(e => console.warn('service worker', e));
