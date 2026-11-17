@@ -85,15 +85,18 @@
   <section class="vue" id="vue-comptes">
     <div class="carte">
       <h2>Comptes des franchisés</h2>
-      <p class="aide">Chaque adresse Zimbra donne accès aux seuls magasins choisis. Les administrateurs de Suivi Stats voient tout.</p>
+      <p class="aide">Choisissez le groupe du franchisé et son adresse Zimbra : ses magasins sont repris du référentiel de Suivi Stats (franchises actives du groupe) et suivent automatiquement ses mises à jour. Les administrateurs de Suivi Stats voient tout.</p>
       <div class="grille-cpt">
         <div><label for="cp-email">Adresse Zimbra</label><input id="cp-email" type="email" autocomplete="off"></div>
         <div><label for="cp-nom">Nom (facultatif)</label><input id="cp-nom" autocomplete="off"></div>
       </div>
-      <label for="cp-role">Type de compte</label>
-      <select id="cp-role"><option value="franchise">Franchisé : suivi, récapitulatifs, acceptation / refus des motifs</option><option value="magasin">Magasin : dépôt de l’extraction et justification seulement</option></select>
-      <label for="cp-q">Magasins (franchises du référentiel)</label>
-      <input id="cp-q" type="search" placeholder="Rechercher un magasin, un code ou un franchisé" autocomplete="off">
+      <div class="grille-cpt">
+        <div><label for="cp-groupe">Groupe (franchisé du référentiel)</label><select id="cp-groupe"></select></div>
+        <div><label for="cp-role">Type de compte</label>
+        <select id="cp-role"><option value="franchise">Franchisé : tous les magasins du groupe, suivi, récapitulatifs, acceptation / refus</option><option value="magasin">Magasin : dépôt et justification des magasins cochés</option></select></div>
+      </div>
+      <label id="cp-lib-mag">Magasins</label>
+      <input id="cp-q" type="search" placeholder="Rechercher un magasin ou un code" autocomplete="off" hidden>
       <div id="cp-magasins" class="choix-mag"></div>
       <button class="primaire" id="cp-enregistrer">Enregistrer le compte</button> <button id="cp-vider">Nouveau</button>
       <p class="petit" id="cp-info"></p>
