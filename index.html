@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="/suivi-stats/assets/icone-192.png">
+<link rel="apple-touch-icon" href="/suivi-stats/assets/apple-touch-icon.png">
+<title>Restes dus – franchisés</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="entete">
+  <img src="/suivi-stats/assets/logo-optical-center.png" alt="Optical Center">
+  <h1><small>Optical Center</small>Restes dus</h1>
+  <div class="droite"><span id="qui"></span> <a href="#" id="lien-deconnexion" hidden>Déconnexion</a></div>
+</header>
+<div id="bandeau-maj" class="bandeau" hidden>Une nouvelle version est disponible. <button class="primaire" id="btn-maj">Mettre à jour</button></div>
+
+<section id="ecran-connexion" hidden>
+  <div class="carte etroite">
+    <h2>Connexion</h2>
+    <p class="aide">Connectez-vous avec l’adresse e-mail Zimbra de votre magasin et son mot de passe.</p>
+    <label for="cx-user">Adresse e-mail Zimbra</label><input id="cx-user" type="email" autocomplete="username">
+    <label for="cx-pass">Mot de passe</label><input id="cx-pass" type="password" autocomplete="current-password">
+    <button class="primaire large" id="btn-connexion">Se connecter</button>
+    <p class="muted petit" id="cx-info"></p>
+  </div>
+</section>
+
+<nav class="onglets" id="onglets" hidden>
+  <button data-vue="magasin" class="actif">Mes restes dus</button>
+  <button data-vue="suivi" class="admin-seul">Suivi</button>
+  <button data-vue="comptes" class="admin-seul">Comptes</button>
+</nav>
+
+<main id="principal" hidden>
+  <section class="vue actif" id="vue-magasin">
+    <div class="carte">
+      <div class="ligne-titre">
+        <h2 id="mg-titre">Restes dus</h2>
+        <select id="mg-choix" hidden></select>
+      </div>
+      <div id="depot" class="depot" tabindex="0">
+        <strong>Déposez ici votre extraction Cosium « Liste des règlements »</strong> (fichier .csv)<br>
+        <span class="muted petit">ou cliquez pour le choisir. Le fichier est lu sur cet ordinateur : seuls les dossiers à justifier sont envoyés, sans n° de Sécurité sociale.</span>
+        <input type="file" id="fichier" accept=".csv,text/csv" hidden>
+      </div>
+      <p id="depot-info" class="petit"></p>
+      <div id="mg-resume" class="resume"></div>
+      <div class="ligne filtres" id="mg-filtres" hidden>
+        <label class="case"><input type="checkbox" id="mg-afaire" checked> Seulement les dossiers à justifier</label>
+        <input id="mg-q" type="search" placeholder="Rechercher (facture, client, organisme)">
+      </div>
+      <div id="mg-dossiers"></div>
+    </div>
+    <p class="muted petit regle">Dossiers demandés : règlements de plus de 45 jours et de moins d’un an à la date d’édition de l’extraction, une justification par facture. Un dossier qui n’apparaît plus dans l’extraction suivante est considéré comme réglé. Une justification dont la date d’action prévue est dépassée est redemandée.</p>
+  </section>
+
+  <section class="vue" id="vue-suivi">
+    <div class="carte">
+      <h2>Suivi des franchisés</h2>
+      <div id="sv-resume" class="resume"></div>
+      <div class="defile"><table class="tableau" id="sv-table"></table></div>
+    </div>
+  </section>
+
+  <section class="vue" id="vue-comptes">
+    <div class="carte">
+      <h2>Comptes des franchisés</h2>
+      <p class="aide">Chaque adresse Zimbra donne accès aux seuls magasins choisis. Les administrateurs de Suivi Stats voient tout.</p>
+      <div class="grille-cpt">
+        <div><label for="cp-email">Adresse Zimbra</label><input id="cp-email" type="email" autocomplete="off"></div>
+        <div><label for="cp-nom">Nom (facultatif)</label><input id="cp-nom" autocomplete="off"></div>
+      </div>
+      <label for="cp-q">Magasins (franchises du référentiel)</label>
+      <input id="cp-q" type="search" placeholder="Rechercher un magasin, un code ou un franchisé" autocomplete="off">
+      <div id="cp-magasins" class="choix-mag"></div>
+      <button class="primaire" id="cp-enregistrer">Enregistrer le compte</button> <button id="cp-vider">Nouveau</button>
+      <p class="petit" id="cp-info"></p>
+      <div class="defile"><table class="tableau" id="cp-table"></table></div>
+    </div>
+  </section>
+</main>
+<footer class="pied muted petit">Restes dus franchisés · <span id="version"></span></footer>
+<script src="app.js"></script>
+</body>
+</html>
