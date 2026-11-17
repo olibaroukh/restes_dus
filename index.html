@@ -30,8 +30,9 @@
 </section>
 
 <nav class="onglets" id="onglets" hidden>
+  <button data-vue="suivi" class="franchise-seul">Suivi</button>
   <button data-vue="magasin" class="actif">Mes restes dus</button>
-  <button data-vue="suivi" class="admin-seul">Suivi</button>
+  <button data-vue="recap" class="franchise-seul">Récapitulatifs</button>
   <button data-vue="comptes" class="admin-seul">Comptes</button>
 </nav>
 
@@ -50,7 +51,13 @@
       <p id="depot-info" class="petit"></p>
       <div id="mg-resume" class="resume"></div>
       <div class="ligne filtres" id="mg-filtres" hidden>
-        <label class="case"><input type="checkbox" id="mg-afaire" checked> Seulement les dossiers à justifier</label>
+        <select id="mg-statut">
+          <option value="afaire">Dossiers à justifier (sans motif, refusés, date dépassée)</option>
+          <option value="refuse">Motifs refusés</option>
+          <option value="avalider">Motifs à valider</option>
+          <option value="ok">Dossiers justifiés</option>
+          <option value="tous">Tous les dossiers</option>
+        </select>
         <input id="mg-q" type="search" placeholder="Rechercher (facture, client, organisme)">
       </div>
       <div id="mg-dossiers"></div>
@@ -60,9 +67,18 @@
 
   <section class="vue" id="vue-suivi">
     <div class="carte">
-      <h2>Suivi des franchisés</h2>
+      <h2 id="sv-titre">Suivi des franchisés</h2>
       <div id="sv-resume" class="resume"></div>
       <div class="defile"><table class="tableau" id="sv-table"></table></div>
+    </div>
+  </section>
+
+  <section class="vue" id="vue-recap">
+    <div class="carte">
+      <div class="ligne-titre"><h2>Récapitulatifs</h2><select id="rc-magasin"></select></div>
+      <p class="aide">Montants des lignes à justifier (45 jours → 1 an) de la dernière extraction de chaque magasin. « Justifié » = motif saisi et non refusé ; « Refusé » = motif non accepté par le franchisé ; « Sans justification » = aucun motif ou date d’action dépassée.</p>
+      <div id="rc-resume" class="resume"></div>
+      <div id="rc-tables" class="grille-recap"></div>
     </div>
   </section>
 
@@ -74,6 +90,8 @@
         <div><label for="cp-email">Adresse Zimbra</label><input id="cp-email" type="email" autocomplete="off"></div>
         <div><label for="cp-nom">Nom (facultatif)</label><input id="cp-nom" autocomplete="off"></div>
       </div>
+      <label for="cp-role">Type de compte</label>
+      <select id="cp-role"><option value="franchise">Franchisé : suivi, récapitulatifs, acceptation / refus des motifs</option><option value="magasin">Magasin : dépôt de l’extraction et justification seulement</option></select>
       <label for="cp-q">Magasins (franchises du référentiel)</label>
       <input id="cp-q" type="search" placeholder="Rechercher un magasin, un code ou un franchisé" autocomplete="off">
       <div id="cp-magasins" class="choix-mag"></div>
