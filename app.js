@@ -73,7 +73,7 @@
   if (typeof module !== 'undefined') { module.exports = { lireExtraction }; return; }
 
   // ---------- Appli ----------
-  const VERSION_CODE = '2026.11.17-3';   // à incrémenter avec version.json à chaque modification
+  const VERSION_CODE = '2026.11.18-1';   // à incrémenter avec version.json à chaque modification
   const API = 'https://suivi-stats-api.oli-baroukh.workers.dev';
   const CLE_SESSION = 'suiviStatsSession';
   const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -368,34 +368,62 @@
   }
 
   // ---------- Comptes (administrateurs) ----------
+  // Franchisé : on choisit le groupe, ses magasins viennent du référentiel (franchises actives du groupe), automatiquement.
+  // Magasin : on choisit le groupe pour filtrer, puis on coche le ou les magasins.
   let choixCodes = new Set(), emailEdite = null;
+  const groupes = () => [...new Set(S.magasins.map(m => m.groupe).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const magsGroupe = g => S.magasins.filter(m => m.groupe === g);
   async function chargerComptes() {
     try { S.comptes = (await appel('/restes-dus/comptes')).comptes; rendreComptes(); } catch (e) { $('#cp-info').textContent = e.message; }
   }
+  function remplirGroupes() {
+    const sel = $('#cp-groupe'), v = sel.value;
+    sel.innerHTML = '<option value="">— Choisir le groupe —</option>' + groupes().map(g => `<option value="${esc(g)}">${esc(g)} (${magsGroupe(g).length} magasin${magsGroupe(g).length > 1 ? 's' : ''})</option>`).join('');
+    sel.value = v;
+  }
   function rendreChoixMagasins() {
+    const g = $('#cp-groupe').value, role = $('#cp-role').value;
+    $('#cp-q').hidden = role !== 'magasin';
+    if (role === 'franchise') {
+      $('#cp-lib-mag').textContent = 'Magasins du groupe (automatique, d’après le référentiel)';
+      $('#cp-magasins').innerHTML = !g ? '<p class="muted petit">Choisissez le groupe : ses magasins s’afficheront ici.</p>'
+        : magsGroupe(g).map(m => `<div class="petit">✓ ${esc(m.magasin)} <span class="muted">${esc(m.code)}</span></div>`).join('');
+      return;
+    }
+    $('#cp-lib-mag').textContent = 'Magasin(s) de ce compte';
     const q = norm($('#cp-q').value);
-    const liste = S.magasins.filter(m => choixCodes.has(m.code) || !q || norm(m.code + ' ' + m.magasin + ' ' + m.groupe).includes(q)).slice(0, 300);
+    const liste = S.magasins.filter(m => choixCodes.has(m.code) || ((!g || m.groupe === g) && (!q || norm(m.code + ' ' + m.magasin + ' ' + m.groupe).includes(q)))).slice(0, 300);
     $('#cp-magasins').innerHTML = liste.map(m => `<label><input type="checkbox" value="${esc(m.code)}"${choixCodes.has(m.code) ? ' checked' : ''}> ${esc(m.magasin)} <span class="muted">${esc(m.code)} · ${esc(m.groupe)}</span></label>`).join('') || '<p class="muted petit">Aucun magasin.</p>';
     $$('#cp-magasins input').forEach(c => c.onchange = () => { c.checked ? choixCodes.add(c.value) : choixCodes.delete(c.value); });
   }
   function rendreComptes() {
-    rendreChoixMagasins();
+    remplirGroupes(); rendreChoixMagasins();
     const nomMag = c => (S.magasins.find(m => m.code === c) || {}).magasin || c;
-    $('#cp-table').innerHTML = '<thead><tr><th>Adresse</th><th>Nom</th><th>Type</th><th>Magasins</th><th>Actif</th><th></th></tr></thead><tbody>' +
-      (S.comptes || []).map(c => `<tr><td>${esc(c.email)}</td><td>${esc(c.nom || '')}</td><td>${c.role === 'magasin' ? 'Magasin' : 'Franchisé'}</td><td class="petit">${c.codes.map(x => esc(nomMag(x)) + ' <span class="muted">' + esc(x) + '</span>').join('<br>')}</td>
+    const magsCompte = c => [...new Set([...(c.groupe ? c.magasinsGroupe || [] : []), ...c.codes])];
+    $('#cp-table').innerHTML = '<thead><tr><th>Groupe</th><th>Adresse</th><th>Nom</th><th>Type</th><th>Magasins</th><th>Actif</th><th></th></tr></thead><tbody>' +
+      (S.comptes || []).map(c => `<tr><td>${esc(c.groupe || (S.magasins.find(m => m.code === c.codes[0]) || {}).groupe || '–')}</td><td>${esc(c.email)}</td><td>${esc(c.nom || '')}</td><td>${c.role === 'magasin' ? 'Magasin' : 'Franchisé'}</td>
+        <td class="petit">${magsCompte(c).map(x => esc(nomMag(x)) + ' <span class="muted">' + esc(x) + '</span>').join('<br>') || '<span class="ko">aucun magasin actif</span>'}${c.groupe ? '<br><span class="muted">(magasins du groupe, automatique)</span>' : ''}</td>
         <td>${c.actif ? '✓' : '<span class="ko">non</span>'}</td>
         <td><button data-e="${esc(c.email)}" class="cp-mod">Modifier</button> <button data-e="${esc(c.email)}" class="cp-act">${c.actif ? 'Désactiver' : 'Réactiver'}</button> <button data-e="${esc(c.email)}" class="cp-sup">Supprimer</button></td></tr>`).join('') + '</tbody>';
-    $$('.cp-mod').forEach(b => b.onclick = () => { const c = S.comptes.find(x => x.email === b.dataset.e); emailEdite = c.email; $('#cp-email').value = c.email; $('#cp-nom').value = c.nom || ''; $('#cp-role').value = c.role === 'magasin' ? 'magasin' : 'franchise'; choixCodes = new Set(c.codes); $('#cp-q').value = ''; rendreChoixMagasins(); $('#cp-info').textContent = 'Modification de ' + c.email; window.scrollTo(0, 0); });
+    $$('.cp-mod').forEach(b => b.onclick = () => {
+      const c = S.comptes.find(x => x.email === b.dataset.e); emailEdite = c.email;
+      $('#cp-email').value = c.email; $('#cp-nom').value = c.nom || ''; $('#cp-role').value = c.role === 'magasin' ? 'magasin' : 'franchise';
+      // groupe : celui du compte, sinon celui de ses magasins (anciens comptes ou comptes magasin)
+      $('#cp-groupe').value = c.groupe || ((S.magasins.find(m => m.code === c.codes[0]) || {}).groupe || '');
+      choixCodes = new Set(c.role === 'magasin' ? c.codes : []); $('#cp-q').value = ''; rendreChoixMagasins();
+      $('#cp-info').textContent = 'Modification de ' + c.email; window.scrollTo(0, 0);
+    });
     $$('.cp-act').forEach(b => b.onclick = async () => { const c = S.comptes.find(x => x.email === b.dataset.e); try { await appel('/restes-dus/comptes', { method: 'PUT', body: JSON.stringify({ ...c, actif: !c.actif }) }); chargerComptes(); } catch (e) { $('#cp-info').textContent = e.message; } });
     $$('.cp-sup').forEach(b => b.onclick = async () => { if (!confirm('Supprimer le compte ' + b.dataset.e + ' ? Les justifications déjà saisies sont conservées.')) return; try { await appel('/restes-dus/comptes/supprimer', { method: 'POST', body: JSON.stringify({ email: b.dataset.e }) }); chargerComptes(); } catch (e) { $('#cp-info').textContent = e.message; } });
   }
-  function viderCompte() { emailEdite = null; $('#cp-role').value = 'franchise'; $('#cp-email').value = ''; $('#cp-nom').value = ''; $('#cp-q').value = ''; choixCodes = new Set(); $('#cp-info').textContent = ''; rendreChoixMagasins(); }
+  function viderCompte() { emailEdite = null; $('#cp-role').value = 'franchise'; $('#cp-groupe').value = ''; $('#cp-email').value = ''; $('#cp-nom').value = ''; $('#cp-q').value = ''; choixCodes = new Set(); $('#cp-info').textContent = ''; rendreChoixMagasins(); }
   async function enregistrerCompte() {
-    const email = $('#cp-email').value.trim().toLowerCase();
+    const email = $('#cp-email').value.trim().toLowerCase(), role = $('#cp-role').value, groupe = $('#cp-groupe').value;
     try {
+      if (role === 'franchise' && !groupe) throw new Error('Choisissez le groupe du franchisé.');
       if (emailEdite && emailEdite !== email) await appel('/restes-dus/comptes/supprimer', { method: 'POST', body: JSON.stringify({ email: emailEdite }) });
       const ex = (S.comptes || []).find(x => x.email === email);
-      await appel('/restes-dus/comptes', { method: 'PUT', body: JSON.stringify({ email, nom: $('#cp-nom').value.trim(), role: $('#cp-role').value, codes: [...choixCodes], actif: ex ? ex.actif : true }) });
+      await appel('/restes-dus/comptes', { method: 'PUT', body: JSON.stringify({ email, nom: $('#cp-nom').value.trim(), role, groupe: role === 'franchise' ? groupe : '', codes: role === 'magasin' ? [...choixCodes] : [], actif: ex ? ex.actif : true }) });
       viderCompte(); $('#cp-info').textContent = 'Compte enregistré : ' + email; chargerComptes();
     } catch (e) { $('#cp-info').textContent = e.message; }
   }
@@ -426,7 +454,7 @@
   zone.ondragover = e => { e.preventDefault(); zone.classList.add('survol'); };
   zone.ondragleave = () => zone.classList.remove('survol');
   zone.ondrop = e => { e.preventDefault(); zone.classList.remove('survol'); deposer(e.dataTransfer.files[0]); };
-  $('#cp-q').oninput = rendreChoixMagasins; $('#cp-enregistrer').onclick = enregistrerCompte; $('#cp-vider').onclick = viderCompte;
+  $('#cp-q').oninput = rendreChoixMagasins; $('#cp-groupe').onchange = rendreChoixMagasins; $('#cp-role').onchange = rendreChoixMagasins; $('#cp-enregistrer').onclick = enregistrerCompte; $('#cp-vider').onclick = viderCompte;
   // Mise à jour : le service worker relit les fichiers sur le réseau, puis la page est rechargée
   $('#btn-maj').onclick = async () => {
     $('#btn-maj').disabled = true; $('#btn-maj').textContent = 'Mise à jour…';
